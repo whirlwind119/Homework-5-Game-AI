@@ -230,6 +230,8 @@ MonoBehaviour:
   Path: {fileID: 1988444937134378, guid: 2a116c65f716b8b4a8ee68baff491f0f, type: 2}
   Wall: {fileID: 1489232829512870, guid: ee24ea02ced158b4b931aac6d9c1bd28, type: 2}
   Tree: {fileID: 1662981074632898, guid: 82b143d0c5758664891111f9695086cd, type: 2}
+  Tile: {fileID: 1165056031587844, guid: e2c621de0a5632c4880bd15a5fd53ddf, type: 2}
+  tileSize: 2
 --- !u!4 &2081629496
 Transform:
   m_ObjectHideFlags: 0
