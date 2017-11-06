@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.IO;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class MapLoading : MonoBehaviour {
 
@@ -12,8 +13,8 @@ public class MapLoading : MonoBehaviour {
     public GameObject Tree;
     public GameObject Tile;
     public Camera cam;
-    public int y_index = 3;//305
-    public int x_index = 3;//294
+    public int y_index = 305;//305
+    public int x_index = 294;//294
 
     GameObject[][] DataMap;
     GameObject[][] Tiles;
@@ -21,7 +22,10 @@ public class MapLoading : MonoBehaviour {
     GameObject[] DataRow;
     public int tileSize;
     int length;
+    float weight = 1f;
+    string heuristic = "None";
 
+    List<List<GameObject>> TileMap = new List<List<GameObject>>();
 
     float native_width = 1920;
     float native_height = 1080;
@@ -30,12 +34,11 @@ public class MapLoading : MonoBehaviour {
     void Start() {
         int roundedlength = Mathf.CeilToInt(y_index * x_index / (tileSize * tileSize) + y_index);
         length = roundedlength;
+        /*
         DataRow = new GameObject[x_index];
         DataMap = new GameObject[y_index][];
         TileRow = new GameObject[tileSize * tileSize];
         Tiles = new GameObject[length][];
-        string line;
-        int y = 0;
         bool start = false;
         for(int i = 0; i < y_index; i++)
         {
@@ -46,8 +49,19 @@ public class MapLoading : MonoBehaviour {
             DataMap[i] = DataRow;
         }
         int tilecount = 0;
-
-        StreamReader reader = new StreamReader("Assets/Map2.txt", Encoding.Default);
+        */
+        cam = Camera.main;
+        for (int i = 0; i < y_index; ++i) {
+            List<GameObject> temp = new List<GameObject>();
+            for (int j = 0; j < x_index; ++j) {
+                temp.Add(null);
+            }
+            TileMap.Add(temp);
+        }
+        string line;
+        bool start = false;
+        int y = 0;
+        StreamReader reader = new StreamReader("Assets/Map.txt", Encoding.Default);
 
         using (reader)
         {
@@ -60,12 +74,13 @@ public class MapLoading : MonoBehaviour {
                     {
                         for (int i = 0; i < line.Length; i++)
                         {
+
                             GameObject type;
                             if (line[i] == '@')
                             {
                                 type = Instantiate(Wall, new Vector2(i * (1.28f) + 0.64f, y * (1.28f) + 0.64f), Quaternion.identity);
                                 type.transform.tag = "wall";
-                                DataMap[y][i] = type;
+                                TileMap[y][i] = type;
                             }
                             else if (line[i] == '.')
                             {
@@ -76,15 +91,16 @@ public class MapLoading : MonoBehaviour {
                                 type.GetComponent<SelectNode>().x = i;
                                 type.GetComponent<SelectNode>().y = y;
 
-                                DataMap[y][i] = type;
+                                TileMap[y][i] = type;
+                                
                             }
                             else if (line[i] == 'T')
                             {
                                 type = Instantiate(Tree, new Vector2(i * 1.28f + 0.64f, y * 1.28f+ 0.64f), Quaternion.identity);
                                 type.transform.tag = "tree";
-                                DataMap[y][i] = type;
+                                TileMap[y][i] = type;
                             }
-                            //Debug.Log("y:" + y + "     x:"  + i + "     type:" + DataMap[y][i]);
+
                         }
                         y++;
                     }
@@ -136,7 +152,10 @@ public class MapLoading : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-        
+        if (Input.GetAxis("Mouse ScrollWheel") != 0f) // forward
+{
+            cam.orthographicSize -= Input.GetAxis("Mouse ScrollWheel")*50;
+        }
     }
 
     private List<GameObject> findPath(GameObject startNode, GameObject endNode) {
@@ -152,34 +171,35 @@ public class MapLoading : MonoBehaviour {
             //Debug.Log(openList.Count);
             GameObject node = openList[0];
             openList.Remove(openList[0]);
-            //Debug.Log(openList.Count);
             node.GetComponent<SelectNode>().closed = true;
 
             if (node == endNode) {
                 return composePath(startNode,endNode);
             }
-            //Debug.Log(node);
-            //Destroy(node);
-           
-            Debug.Log(startNode.GetComponent<SelectNode>().y);
-            Debug.Log(startNode.GetComponent<SelectNode>().x);
-            Destroy(DataMap[startNode.GetComponent<SelectNode>().y][startNode.GetComponent<SelectNode>().x]);
-
-            Destroy(DataMap[node.GetComponent<SelectNode>().y][node.GetComponent<SelectNode>().x]);
             List<GameObject> neighbors = findNeighbors(node);
             for (int i = 0, l = neighbors.Count; i<l; ++i) {
                 GameObject neighbor = neighbors[i];
+                neighbor.gameObject.GetComponent<Renderer>().material.color = Color.black;
                 if (neighbor.GetComponent<SelectNode>().closed) {
                     continue;
                 }
 
-                int x = neighbor.GetComponent<SelectNode>().x;
-                int y = neighbor.GetComponent<SelectNode>().y;
+                //int x = neighbor.GetComponent<SelectNode>().x;
+                //int y = neighbor.GetComponent<SelectNode>().y;
+                //Destroy(DataMap[y][x]);
 
                 float ng = node.GetComponent<SelectNode>().g + 1;
+
                 if(!neighbor.GetComponent<SelectNode>().opened || ng < neighbor.GetComponent<SelectNode>().g) {
                     neighbor.GetComponent<SelectNode>().g = ng;
-                    neighbor.GetComponent<SelectNode>().f = neighbor.GetComponent<SelectNode>().g + 1;
+                    if (heuristic == "none") {
+                        neighbor.GetComponent<SelectNode>().h = 1f;
+                        neighbor.GetComponent<SelectNode>().f = neighbor.GetComponent<SelectNode>().g + neighbor.GetComponent<SelectNode>().h;
+                    }
+                    else {
+                        neighbor.GetComponent<SelectNode>().h = calculateHeuristics(node, endNode) * weight;
+                        neighbor.GetComponent<SelectNode>().f = neighbor.GetComponent<SelectNode>().g + neighbor.GetComponent<SelectNode>().h;
+                    }
                     neighbor.GetComponent<SelectNode>().parent = node;
 
                     if (!neighbor.GetComponent<SelectNode>().opened) {
@@ -206,6 +226,28 @@ public class MapLoading : MonoBehaviour {
             GameObject goal = GameObject.FindGameObjectWithTag("goal");
             findPath(start,goal);
         }
+        if (GUI.Button(new Rect((native_width) - 200, 200, 150, 100), "Heuristic: " + heuristic)) {
+            if (heuristic == "None") {
+                heuristic = "Manhattan";
+            }
+            else if (heuristic == "Manhattan") {
+                heuristic = "Euclidean";
+            }
+            else {
+                heuristic = "None";
+            }
+            
+        }
+        if (GUI.Button(new Rect((native_width) - 200, 350, 150, 100), "Weight Percentage: \n " + weight*100 + "%")) {
+            weight = weight + .25f;
+            if (weight > 2) {
+                weight = .25f;
+            }
+
+        }
+        if (GUI.Button(new Rect((native_width) - 200, 500, 150, 100), "Reset")) {
+            SceneManager.LoadScene("scene1");
+        }
     }
 
     static int sortByFScore(GameObject node1, GameObject node2) {
@@ -215,11 +257,13 @@ public class MapLoading : MonoBehaviour {
     private List<GameObject> composePath(GameObject startNode, GameObject endNode) {
         List<GameObject> path = new List<GameObject>();
         GameObject curNode = endNode;
-        while(curNode != startNode) {
+        curNode.gameObject.GetComponent<Renderer>().material.color = Color.red;
+        while (curNode != startNode) {
             curNode = curNode.GetComponent<SelectNode>().parent;
-            curNode.gameObject.GetComponent<Renderer>().material.color = Color.yellow;
+            curNode.gameObject.GetComponent<Renderer>().material.color = Color.magenta;
             path.Add(curNode);
         }
+        curNode.gameObject.GetComponent<Renderer>().material.color = Color.blue;
         return path;
     }
 
@@ -229,18 +273,41 @@ public class MapLoading : MonoBehaviour {
         int x = node.x;
         int y = node.y;
 
-        if (DataMap[y-1][x].gameObject.transform.tag == "path") {
-            neighbors.Add(DataMap[x - 1][y]);
+        if (TileMap[y-1][x].gameObject.transform.tag == "path" || TileMap[y - 1][x].gameObject.transform.tag == "goal") {
+            neighbors.Add(TileMap[y - 1][x]);
         }
-        if (DataMap[y + 1][x].gameObject.transform.tag == "path") {
-            neighbors.Add(DataMap[x - 1][y]);
+        if (TileMap[y + 1][x].gameObject.transform.tag == "path" || TileMap[y + 1][x].gameObject.transform.tag == "goal") {
+            neighbors.Add(TileMap[y + 1][x]);
         }
-        if (DataMap[y][x-1].gameObject.transform.tag == "path") {
-            neighbors.Add(DataMap[x - 1][y]);
+        if (TileMap[y][x-1].gameObject.transform.tag == "path" || TileMap[y][x - 1].gameObject.transform.tag == "goal") {
+            neighbors.Add(TileMap[y][x-1]);
         }
-        if (DataMap[y][x+1].gameObject.transform.tag == "path") {
-            neighbors.Add(DataMap[x - 1][y]);
+        if (TileMap[y][x+1].gameObject.transform.tag == "path" || TileMap[y][x + 1].gameObject.transform.tag == "goal") {
+            neighbors.Add(TileMap[y][x+1]);
         }
         return neighbors;
+    }
+
+    private float calculateHeuristics(GameObject currentNode, GameObject endNode) {
+        float to_return = 0;
+        if (heuristic == "Manhattan") {
+            SelectNode currentNodeInfo = currentNode.GetComponent<SelectNode>();
+            SelectNode endNodeInfo = endNode.GetComponent<SelectNode>();
+            float dx = currentNodeInfo.x - endNodeInfo.x;
+            dx = Math.Abs(dx);
+            float dy = currentNodeInfo.y - endNodeInfo.y;
+            dy = Math.Abs(dy);
+            to_return = dx + dy;
+        }
+        else if(heuristic == "Euclidean") {
+            SelectNode currentNodeInfo = currentNode.GetComponent<SelectNode>();
+            SelectNode endNodeInfo = endNode.GetComponent<SelectNode>();
+            float dx = currentNodeInfo.x - endNodeInfo.x;
+            dx = Math.Abs(dx);
+            float dy = currentNodeInfo.y - endNodeInfo.y;
+            dy = Math.Abs(dy);
+            to_return = (float)Math.Sqrt(dx * dx + dy * dy);
+        }
+        return to_return;
     }
 }

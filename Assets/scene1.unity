@@ -229,8 +229,8 @@ MonoBehaviour:
   Tree: {fileID: 1662981074632898, guid: 82b143d0c5758664891111f9695086cd, type: 2}
   Tile: {fileID: 1165056031587844, guid: e2c621de0a5632c4880bd15a5fd53ddf, type: 2}
   cam: {fileID: 1431928016}
-  y_index: 8
-  x_index: 8
+  y_index: 304
+  x_index: 294
   tileSize: 2
 --- !u!4 &2081629496
 Transform:
