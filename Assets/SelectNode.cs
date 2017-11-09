@@ -22,6 +22,9 @@ public class SelectNode : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
+        if(transform.tag == "waypoint") {
+            gameObject.GetComponent<Renderer>().material.color = Color.yellow;
+        }
 
 	}
 
@@ -55,6 +58,10 @@ public class SelectNode : MonoBehaviour {
         if (Input.GetMouseButton(2)) {
             transform.tag = "tree";
             GetComponent<SpriteRenderer>().sprite = Resources.Load<Sprite>("Tree");
+        }
+        if (Input.GetKeyDown(KeyCode.Space)) {
+            transform.tag = "waypoint";
+            gameObject.GetComponent<Renderer>().material.color = Color.yellow;
         }
     }
 }

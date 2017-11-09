@@ -9,6 +9,7 @@ TagManager:
   - path
   - start
   - goal
+  - waypoint
   layers:
   - Default
   - TransparentFX
